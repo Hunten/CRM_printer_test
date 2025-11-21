@@ -393,6 +393,7 @@ def generate_initial_receipt_pdf(order, company_info, logo_image=None):
                             "Acest document constituie dovada predarii echipamentului in service.")
         c.setDash(3, 3)
         c.line(5 * mm, offset_y + 1 * mm, 205 * mm, offset_y + 1 * mm)
+        c.setDash()
 
     # Desenam doua jumatati A5 pe aceeasi pagina A4
     draw_half(0)            # jumatatea de jos
@@ -672,7 +673,8 @@ def generate_completion_receipt_pdf(order, company_info, logo_image=None):
                             "Acest document constituie dovada ridicarii echipamentului din service.")
         c.setDash(3, 3)
         c.line(5 * mm, offset_y + 1 * mm, 205 * mm, offset_y + 1 * mm)
-
+        c.setDash()
+        
     # Doua bonuri A5 identice pe A4
     draw_half(0)            # jumatatea de jos
     draw_half(a5_height)    # jumatatea de sus
