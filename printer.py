@@ -917,145 +917,145 @@ def main():
     st.divider()
     active_tab = st.session_state["active_tab"]
 
-# TAB 0: NEW ORDER
-if active_tab == 0:
-    # dacă vii din alt tab, resetează starea de "ultimul order"
-    if st.session_state.get("last_tab") != 0:
-        st.session_state["last_created_order"] = None
-        st.session_state["pdf_downloaded"] = False
-
-    st.header("Create New Service Order")
-
-    if not st.session_state["last_created_order"] or st.session_state["pdf_downloaded"]:
-        # Ensure temp_printers exists
-        if "temp_printers" not in st.session_state or not st.session_state["temp_printers"]:
-            st.session_state["temp_printers"] = [{"brand": "", "model": "", "serial": "", "has_warranty": False}]  # <-- ADĂUGAT has_warranty
-
-        with st.form(key="new_order_form", clear_on_submit=False):
-            col1, col2 = st.columns(2)
-            with col1:
-                st.subheader("Client Information")
-                client_name = st.text_input("Name *", key="new_client_name")
-                client_phone = st.text_input("Phone *", key="new_client_phone")
-                client_email = st.text_input("Email", key="new_client_email")
-            with col2:
-                st.subheader("Order Dates")
-                date_received = st.date_input("Date Received *", value=date.today(), key="new_date_received")
-                date_pickup = st.date_input("Scheduled Pickup (optional)", value=None, key="new_date_pickup")
-
-            st.subheader("Printers in This Order")
-
-            printers_list = st.session_state["temp_printers"]
-            remove_flags = []
-
-            # Draw each printer row
-            for i, p in enumerate(printers_list):
-                st.markdown(f"**Printer #{i+1}**")
-                colA, colB, colC, colD, colE = st.columns([1.2, 1.2, 1.2, 0.8, 0.6])  # <-- ADĂUGAT colE
-                with colA:
-                    p["brand"] = st.text_input(f"Brand #{i+1} *", value=p["brand"], key=f"new_printer_brand_{i}")
-                with colB:
-                    p["model"] = st.text_input(f"Model #{i+1} *", value=p["model"], key=f"new_printer_model_{i}")
-                with colC:
-                    p["serial"] = st.text_input(f"Serial #{i+1}", value=p["serial"], key=f"new_printer_serial_{i}")
-                with colD:
-                    # --- CHECKBOX GARANȚIE ---
-                    p["has_warranty"] = st.checkbox(
-                        "Warranty?", 
-                        value=p.get("has_warranty", False), 
-                        key=f"new_printer_warranty_{i}"
-                    )
-                with colE:
-                    remove_flags.append(
-                        st.checkbox("Remove", key=f"new_printer_remove_{i}")
-                    )
-
-            issue_description = st.text_area("Issue Description *", height=100, key="new_issue_description")
-            accessories = st.text_input("Accessories (cables, cartridges, etc.)", key="new_accessories")
-            notes = st.text_area("Additional Notes", height=60, key="new_notes")
-
-            col_btn1, col_btn2, col_btn3 = st.columns(3)
-            with col_btn1:
-                remove_clicked = st.form_submit_button("🗑 Remove selected printers")
-            with col_btn2:
-                add_clicked = st.form_submit_button("➕ Add another printer")
-            with col_btn3:
-                submit = st.form_submit_button("🎫 Create Order", type="primary", use_container_width=True)
-
-            if remove_clicked:
-                st.session_state["temp_printers"] = [
-                    p for p, flag in zip(printers_list, remove_flags) if not flag
-                ]
-                if not st.session_state["temp_printers"]:
-                    st.session_state["temp_printers"] = [{"brand": "", "model": "", "serial": "", "has_warranty": False}]  # <-- ADĂUGAT has_warranty
-                st.rerun()
-
-            if add_clicked:
-                st.session_state["temp_printers"].append({"brand": "", "model": "", "serial": "", "has_warranty": False})  # <-- ADĂUGAT has_warranty
-                st.rerun()
-
-            if submit:
-                # Clean printers list
-                printers_clean = []
-                for p in st.session_state["temp_printers"]:
-                    brand = safe_text(p.get("brand", "")).strip()
-                    model = safe_text(p.get("model", "")).strip()
-                    serial = safe_text(p.get("serial", "")).strip()
-                    has_warranty = p.get("has_warranty", False)  # <-- OBȚINEM VALOAREA
-                    
-                    if brand or model or serial:
-                        printers_clean.append({
-                            "brand": brand,
-                            "model": model,
-                            "serial": serial,
-                            "has_warranty": has_warranty,  # <-- SALVĂM VALOAREA
-                        })
-
-                if not client_name or not client_phone or not issue_description:
-                    st.error("❌ Please fill in all required fields (*) for client and issue.")
-                elif not printers_clean:
-                    st.error("❌ Please add at least one printer (brand and model).")
-                else:
-                    order_id = crm.create_service_order(
-                        client_name, client_phone, client_email,
-                        printers_clean,
-                        issue_description, accessories, notes, date_received, date_pickup
-                    )
-                    if order_id:
-                        st.session_state["last_created_order"] = order_id
-                        st.session_state["pdf_downloaded"] = False
-                        # Reset temp printers
+    # TAB 0: NEW ORDER
+    if active_tab == 0:
+        # dacă vii din alt tab, resetează starea de "ultimul order"
+        if st.session_state.get("last_tab") != 0:
+            st.session_state["last_created_order"] = None
+            st.session_state["pdf_downloaded"] = False
+    
+        st.header("Create New Service Order")
+    
+        if not st.session_state["last_created_order"] or st.session_state["pdf_downloaded"]:
+            # Ensure temp_printers exists
+            if "temp_printers" not in st.session_state or not st.session_state["temp_printers"]:
+                st.session_state["temp_printers"] = [{"brand": "", "model": "", "serial": "", "has_warranty": False}]  # <-- ADĂUGAT has_warranty
+    
+            with st.form(key="new_order_form", clear_on_submit=False):
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.subheader("Client Information")
+                    client_name = st.text_input("Name *", key="new_client_name")
+                    client_phone = st.text_input("Phone *", key="new_client_phone")
+                    client_email = st.text_input("Email", key="new_client_email")
+                with col2:
+                    st.subheader("Order Dates")
+                    date_received = st.date_input("Date Received *", value=date.today(), key="new_date_received")
+                    date_pickup = st.date_input("Scheduled Pickup (optional)", value=None, key="new_date_pickup")
+    
+                st.subheader("Printers in This Order")
+    
+                printers_list = st.session_state["temp_printers"]
+                remove_flags = []
+    
+                # Draw each printer row
+                for i, p in enumerate(printers_list):
+                    st.markdown(f"**Printer #{i+1}**")
+                    colA, colB, colC, colD, colE = st.columns([1.2, 1.2, 1.2, 0.8, 0.6])  # <-- ADĂUGAT colE
+                    with colA:
+                        p["brand"] = st.text_input(f"Brand #{i+1} *", value=p["brand"], key=f"new_printer_brand_{i}")
+                    with colB:
+                        p["model"] = st.text_input(f"Model #{i+1} *", value=p["model"], key=f"new_printer_model_{i}")
+                    with colC:
+                        p["serial"] = st.text_input(f"Serial #{i+1}", value=p["serial"], key=f"new_printer_serial_{i}")
+                    with colD:
+                        # --- CHECKBOX GARANȚIE ---
+                        p["has_warranty"] = st.checkbox(
+                            "Warranty?", 
+                            value=p.get("has_warranty", False), 
+                            key=f"new_printer_warranty_{i}"
+                        )
+                    with colE:
+                        remove_flags.append(
+                            st.checkbox("Remove", key=f"new_printer_remove_{i}")
+                        )
+    
+                issue_description = st.text_area("Issue Description *", height=100, key="new_issue_description")
+                accessories = st.text_input("Accessories (cables, cartridges, etc.)", key="new_accessories")
+                notes = st.text_area("Additional Notes", height=60, key="new_notes")
+    
+                col_btn1, col_btn2, col_btn3 = st.columns(3)
+                with col_btn1:
+                    remove_clicked = st.form_submit_button("🗑 Remove selected printers")
+                with col_btn2:
+                    add_clicked = st.form_submit_button("➕ Add another printer")
+                with col_btn3:
+                    submit = st.form_submit_button("🎫 Create Order", type="primary", use_container_width=True)
+    
+                if remove_clicked:
+                    st.session_state["temp_printers"] = [
+                        p for p, flag in zip(printers_list, remove_flags) if not flag
+                    ]
+                    if not st.session_state["temp_printers"]:
                         st.session_state["temp_printers"] = [{"brand": "", "model": "", "serial": "", "has_warranty": False}]  # <-- ADĂUGAT has_warranty
-                        st.success(f"✅ Order Created: **{order_id}**")
-                        st.balloons()
-                        st.rerun()
-
-    if st.session_state["last_created_order"] and not st.session_state["pdf_downloaded"]:
-        df_fresh = crm.list_orders_df()
-        order_row = df_fresh[df_fresh["order_id"] == st.session_state["last_created_order"]]
-        if not order_row.empty:
-            order = order_row.iloc[0].to_dict()
-            st.divider()
-            st.success(f"✅ Order Created: **{order['order_id']}**")
-            st.subheader("📄 Download Receipt")
-
-            # Get logo from session state
-            logo = st.session_state.get("logo_image", None)
-            pdf_buffer = generate_initial_receipt_pdf(order, st.session_state["company_info"], logo)
-
-            if st.download_button(
-                "📄 Download Initial Receipt",
-                pdf_buffer,
-                f"Initial_{order['order_id']}.pdf",
-                "application/pdf",
-                type="primary",
-                use_container_width=True,
-                key="dl_new_init",
-            ):
-                st.session_state["last_created_order"] = None
-                st.session_state["pdf_downloaded"] = True
-                st.rerun()
-
+                    st.rerun()
+    
+                if add_clicked:
+                    st.session_state["temp_printers"].append({"brand": "", "model": "", "serial": "", "has_warranty": False})  # <-- ADĂUGAT has_warranty
+                    st.rerun()
+    
+                if submit:
+                    # Clean printers list
+                    printers_clean = []
+                    for p in st.session_state["temp_printers"]:
+                        brand = safe_text(p.get("brand", "")).strip()
+                        model = safe_text(p.get("model", "")).strip()
+                        serial = safe_text(p.get("serial", "")).strip()
+                        has_warranty = p.get("has_warranty", False)  # <-- OBȚINEM VALOAREA
+                        
+                        if brand or model or serial:
+                            printers_clean.append({
+                                "brand": brand,
+                                "model": model,
+                                "serial": serial,
+                                "has_warranty": has_warranty,  # <-- SALVĂM VALOAREA
+                            })
+    
+                    if not client_name or not client_phone or not issue_description:
+                        st.error("❌ Please fill in all required fields (*) for client and issue.")
+                    elif not printers_clean:
+                        st.error("❌ Please add at least one printer (brand and model).")
+                    else:
+                        order_id = crm.create_service_order(
+                            client_name, client_phone, client_email,
+                            printers_clean,
+                            issue_description, accessories, notes, date_received, date_pickup
+                        )
+                        if order_id:
+                            st.session_state["last_created_order"] = order_id
+                            st.session_state["pdf_downloaded"] = False
+                            # Reset temp printers
+                            st.session_state["temp_printers"] = [{"brand": "", "model": "", "serial": "", "has_warranty": False}]  # <-- ADĂUGAT has_warranty
+                            st.success(f"✅ Order Created: **{order_id}**")
+                            st.balloons()
+                            st.rerun()
+    
+        if st.session_state["last_created_order"] and not st.session_state["pdf_downloaded"]:
+            df_fresh = crm.list_orders_df()
+            order_row = df_fresh[df_fresh["order_id"] == st.session_state["last_created_order"]]
+            if not order_row.empty:
+                order = order_row.iloc[0].to_dict()
+                st.divider()
+                st.success(f"✅ Order Created: **{order['order_id']}**")
+                st.subheader("📄 Download Receipt")
+    
+                # Get logo from session state
+                logo = st.session_state.get("logo_image", None)
+                pdf_buffer = generate_initial_receipt_pdf(order, st.session_state["company_info"], logo)
+    
+                if st.download_button(
+                    "📄 Download Initial Receipt",
+                    pdf_buffer,
+                    f"Initial_{order['order_id']}.pdf",
+                    "application/pdf",
+                    type="primary",
+                    use_container_width=True,
+                    key="dl_new_init",
+                ):
+                    st.session_state["last_created_order"] = None
+                    st.session_state["pdf_downloaded"] = True
+                    st.rerun()
+    
 
     # TAB 1: ALL ORDERS
     elif active_tab == 1:
