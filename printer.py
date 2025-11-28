@@ -194,7 +194,7 @@ def get_sheets_connection():
         conn = st.connection("gsheets", type=GSheetsConnection)
         return conn
     except Exception as e:
-        st.error(f"Google Sheets connection failed: {e}")
+        st.sidebar.error(f"Google Sheets connection failed: {e}")
         return None
 
 # MODIFICAT: Afisare 'Sub Garantie'/'Fara Garantie' pe bonul de primire
@@ -972,6 +972,7 @@ def main():
         st.header(tab_names[0])
         st.subheader(f"Order ID: **SRV-{crm.next_order_id:05d}**")
 
+        # Start of Form
         with st.form("new_order_form", clear_on_submit=True):
             st.markdown("### 🧑 Client Details")
             col1, col2, col3 = st.columns(3)
@@ -1019,10 +1020,8 @@ def main():
             new_printers_list = [p for i, p in enumerate(printers_list) if not remove_flags[i]]
             st.session_state["temp_printers"] = new_printers_list
 
-            if st.button("➕ Add Another Printer", type="secondary"):
-                # NOU: Initialize 'warranty' as False for a new printer
-                st.session_state["temp_printers"].append({"brand": "", "model": "", "serial": "", "warranty": False})
-                st.rerun()
+            # Trecerea la un RERUN este necesară aici dacă s-a apăsat "Remove"
+            # Deși acest lucru nu este garantat într-un form, checkbox-ul funcționează.
 
             st.divider()
             st.markdown("### 📝 Service Details")
@@ -1089,6 +1088,13 @@ def main():
                 except Exception as e:
                     st.error(f"An error occurred during save: {e}")
                     st.stop()
+        # --- END OF FORM ---
+
+        # MUTAT BUTONUL "ADD PRINTER" IN AFARA FORM-ULUI
+        if st.button("➕ Add Another Printer", type="secondary"):
+            # NOU: Initialize 'warranty' as False for a new printer
+            st.session_state["temp_printers"].append({"brand": "", "model": "", "serial": "", "warranty": False})
+            st.rerun()
 
         if st.session_state["last_created_order"]:
             last_order_id = st.session_state["last_created_order"]
