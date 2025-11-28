@@ -1019,7 +1019,7 @@ def main():
                         order_id = crm.create_service_order(
                             client_name, client_phone, client_email,
                             printers_clean,
-                            issue_description, accessories, notes, date_received, date_pickup
+                            issue_description, accessories, notes, date_received, date_pickup,has_waranty
                         )
                         if order_id:
                             st.session_state["last_created_order"] = order_id
