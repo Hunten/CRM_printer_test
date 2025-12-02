@@ -1233,7 +1233,7 @@ def main():
                         remove_flags = []
                         for i, p in enumerate(current_printers):
                             st.markdown(f"**Printer #{i+1}**")
-                            colA, colB, colC, colD = st.columns([1.2, 1.2, 1.2, 0.8, 0.6])
+                            colA, colB, colC, colD, colE = st.columns([1.2, 1.2, 1.2, 0.8, 0.6])
                             with colA:
                                 p["brand"] = st.text_input(f"Brand #{i+1}", value=p["brand"], key=f"upd_brand_{selected_order_id}_{i}")
                             with colB:
