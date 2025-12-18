@@ -760,8 +760,8 @@ class PrinterServiceCRM:
 
         return missing if missing else existing_sorted[-1] + 1
 
-        def _init_sheet(self):
-        df = self._read_df(raw=True, ttl=0)
+            def _init_sheet(self):
+            df = self._read_df(raw=True, ttl=0)
 
         # CASE 1 — Sheet is missing or fully empty → create new sheet
         if df is None or df.empty:
