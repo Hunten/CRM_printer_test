@@ -701,38 +701,6 @@ class PrinterServiceCRM:
         self.next_order_id = 1
         self._init_sheet()
 
-    def _read_df(self, raw: bool = True, ttl: int = 0) -> Optional[pd.DataFrame]:
-        """Read Google Sheets into DataFrame safely."""
-        try:
-            df = self.conn.read(
-                worksheet=self.worksheet,
-                ttl=ttl
-            )
-            if df is None:
-                return None
-            if raw:
-                return df
-            return df.fillna("")
-        except Exception as e:
-            st.sidebar.error(f"❌ Error reading Google Sheets: {e}")
-            return None
-
-    def _write_df(self, df: pd.DataFrame, allow_empty: bool = False) -> bool:
-        """Write entire DataFrame to Sheets. Prevents accidental data loss."""
-        try:
-            if df is None:
-                st.sidebar.error("❌ Tried to write None DataFrame to Sheets.")
-                return False
-            if df.empty and not allow_empty:
-                st.sidebar.error("⚠️ Refusing to write empty DataFrame to prevent data loss.")
-                return False
-            self.conn.update(worksheet=self.worksheet, data=df)
-            st.sidebar.success("💾 Saved to Google Sheets!")
-            return True
-        except Exception as e:
-            st.sidebar.error(f"❌ Error saving to Google Sheets: {e}")
-            return False
-
     def _compute_next_order_id(self) -> int:
         """Compute next available order ID with fill-the-gap logic."""
         df = self._read_df(raw=True, ttl=0)
@@ -760,8 +728,43 @@ class PrinterServiceCRM:
 
         return missing if missing else existing_sorted[-1] + 1
 
-            def _init_sheet(self):
-            df = self._read_df(raw=True, ttl=0)
+    def _read_df(self, raw: bool = True, ttl: int = 0) -> Optional[pd.DataFrame]:
+        """Read Google Sheets into DataFrame safely."""
+        try:
+            df = self.conn.read(
+                worksheet=self.worksheet,
+                ttl=ttl
+            )
+            if df is None:
+                return None
+            if raw:
+                return df
+            return df.fillna("")
+        except Exception as e:
+            st.sidebar.error(f"❌ Error reading Google Sheets: {e}")
+            return None
+
+
+    def _write_df(self, df: pd.DataFrame, allow_empty: bool = False) -> bool:
+        """Write entire DataFrame to Sheets. Prevents accidental data loss."""
+        try:
+            if df is None:
+                st.sidebar.error("❌ Tried to write None DataFrame to Sheets.")
+                return False
+            if df.empty and not allow_empty:
+                st.sidebar.error("⚠️ Refusing to write empty DataFrame to prevent data loss.")
+                return False
+            self.conn.update(worksheet=self.worksheet, data=df)
+            st.sidebar.success("💾 Saved to Google Sheets!")
+            return True
+        except Exception as e:
+            st.sidebar.error(f"❌ Error saving to Google Sheets: {e}")
+            return False
+
+
+    def _init_sheet(self):
+        """Ensure headers exist and compute next_order_id with fill-the-gap logic."""
+        df = self._read_df(raw=True, ttl=0)
 
         # CASE 1 — Sheet is missing or fully empty → create new sheet
         if df is None or df.empty:
@@ -802,6 +805,8 @@ class PrinterServiceCRM:
 
         # CASE 4 — Compute next order ID
         self.next_order_id = self._compute_next_order_id()
+
+
 
     def create_service_order(
         self,
