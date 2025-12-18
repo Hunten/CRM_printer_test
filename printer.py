@@ -61,7 +61,7 @@ if "pdf_downloaded" not in st.session_state:
 
 # For new-order temporary printers
 if "temp_printers" not in st.session_state:
-    st.session_state["temp_printers"] = [{"brand": "", "model": "", "serial": ""}]
+    st.session_state["temp_printers"] = [{"brand": "", "model": "", "serial": "","warranty": False}]
 
 
 # ============================================================================
@@ -167,7 +167,8 @@ def load_printers_from_order(order: dict):
             printers = [{
                 "brand": brand,
                 "model": model,
-                "serial": serial
+                "serial": serial,
+                "warranty": False,
             }]
     # asigura structura
     cleaned = []
@@ -176,6 +177,7 @@ def load_printers_from_order(order: dict):
             "brand": safe_text(p.get("brand", "")),
             "model": safe_text(p.get("model", "")),
             "serial": safe_text(p.get("serial", "")),
+            "warranty": bool(p.get("warranty", False)),
         })
     return cleaned
 
@@ -307,11 +309,16 @@ def generate_initial_receipt_pdf(order, company_info, logo_image=None):
                 brand = remove_diacritics(safe_text(p.get("brand", "")))
                 model = remove_diacritics(safe_text(p.get("model", "")))
                 serial = safe_text(p.get("serial", ""))
-
+                warranty = p.get("warranty", False)
+                
                 line = f"{idx}. {brand} {model}"
                 if serial:
                     line += f" (SN: {serial})"
 
+                if warranty:
+                    line += " [Sub Garantie]"
+                else:
+                    line += " [Fara Garantie]"
                 c.drawString(10 * mm, y_pos, line)
                 y_pos -= 4 * mm
         else:
@@ -1015,7 +1022,7 @@ def main():
                 # Draw each printer row
                 for i, p in enumerate(printers_list):
                     st.markdown(f"**Printer #{i+1}**")
-                    colA, colB, colC, colD = st.columns([1.2, 1.2, 1.2, 0.6])
+                    colA, colB, colC, colD, colE = st.columns([1.2, 1.2, 1.2, 0.8, 0.6])
                     with colA:
                         p["brand"] = st.text_input(f"Brand #{i+1} *", value=p["brand"], key=f"new_printer_brand_{i}")
                     with colB:
@@ -1023,6 +1030,15 @@ def main():
                     with colC:
                         p["serial"] = st.text_input(f"Serial #{i+1}", value=p["serial"], key=f"new_printer_serial_{i}")
                     with colD:
+                        # NOU: Checkbox Warranty
+                        initial_warranty = p.get("warranty", False)
+                        p["warranty"] = st.checkbox(
+                            "Warranty",
+                            value=initial_warranty,
+                            key=f"new_printer_warranty_{i}",
+                            help="Check this box if the printer is received under warranty."
+                        )
+                    with colE:
                         remove_flags.append(
                             st.checkbox("Remove", key=f"new_printer_remove_{i}")
                         )
@@ -1058,11 +1074,13 @@ def main():
                         brand = safe_text(p.get("brand", "")).strip()
                         model = safe_text(p.get("model", "")).strip()
                         serial = safe_text(p.get("serial", "")).strip()
+                        warranty = p.get("warranty", False) 
                         if brand or model or serial:
                             printers_clean.append({
                                 "brand": brand,
                                 "model": model,
                                 "serial": serial,
+                                "warranty": warranty,
                             })
 
                     if not client_name or not client_phone or not issue_description:
@@ -1079,7 +1097,7 @@ def main():
                             st.session_state["last_created_order"] = order_id
                             st.session_state["pdf_downloaded"] = False
                             # Reset temp printers
-                            st.session_state["temp_printers"] = [{"brand": "", "model": "", "serial": ""}]
+                            st.session_state["temp_printers"] = [{"brand": "", "model": "", "serial": "","warranty": False}]
                             st.success(f"✅ Order Created: **{order_id}**")
                             st.balloons()
                             st.rerun()
@@ -1215,7 +1233,7 @@ def main():
                         remove_flags = []
                         for i, p in enumerate(current_printers):
                             st.markdown(f"**Printer #{i+1}**")
-                            colA, colB, colC, colD = st.columns([1.2, 1.2, 1.2, 0.6])
+                            colA, colB, colC, colD, colE = st.columns([1.2, 1.2, 1.2, 0.8, 0.6])
                             with colA:
                                 p["brand"] = st.text_input(f"Brand #{i+1}", value=p["brand"], key=f"upd_brand_{selected_order_id}_{i}")
                             with colB:
@@ -1223,6 +1241,15 @@ def main():
                             with colC:
                                 p["serial"] = st.text_input(f"Serial #{i+1}", value=p["serial"], key=f"upd_serial_{selected_order_id}_{i}")
                             with colD:
+                                # NOU: Checkbox Warranty
+                                initial_warranty = p.get("warranty", False)
+                                p["warranty"] = st.checkbox(
+                                    "Warranty",
+                                    value=initial_warranty,
+                                    key=f"upd_warranty_printer_{selected_order_id}_{i}",
+                                    help="Check this box if the printer is under warranty."
+                                )
+                            with colE:
                                 remove_flags.append(
                                     st.checkbox("Remove", key=f"upd_remove_printer_{selected_order_id}_{i}")
                                 )
@@ -1346,11 +1373,13 @@ def main():
                                 brand = safe_text(p.get("brand", "")).strip()
                                 model = safe_text(p.get("model", "")).strip()
                                 serial = safe_text(p.get("serial", "")).strip()
+                                warranty = p.get("warranty", False) 
                                 if brand or model or serial:
                                     printers_clean.append({
                                         "brand": brand,
                                         "model": model,
                                         "serial": serial,
+                                        "warranty": warranty, 
                                     })
 
                             printers_json = json.dumps(printers_clean, ensure_ascii=False)
