@@ -701,6 +701,38 @@ class PrinterServiceCRM:
         self.next_order_id = 1
         self._init_sheet()
 
+    def _read_df(self, raw: bool = True, ttl: int = 0) -> Optional[pd.DataFrame]:
+        """Read Google Sheets into DataFrame safely."""
+        try:
+            df = self.conn.read(
+                worksheet=self.worksheet,
+                ttl=ttl
+            )
+            if df is None:
+                return None
+            if raw:
+                return df
+            return df.fillna("")
+        except Exception as e:
+            st.sidebar.error(f"❌ Error reading Google Sheets: {e}")
+            return None
+
+    def _write_df(self, df: pd.DataFrame, allow_empty: bool = False) -> bool:
+        """Write entire DataFrame to Sheets. Prevents accidental data loss."""
+        try:
+            if df is None:
+                st.sidebar.error("❌ Tried to write None DataFrame to Sheets.")
+                return False
+            if df.empty and not allow_empty:
+                st.sidebar.error("⚠️ Refusing to write empty DataFrame to prevent data loss.")
+                return False
+            self.conn.update(worksheet=self.worksheet, data=df)
+            st.sidebar.success("💾 Saved to Google Sheets!")
+            return True
+        except Exception as e:
+            st.sidebar.error(f"❌ Error saving to Google Sheets: {e}")
+            return False
+
     def _compute_next_order_id(self) -> int:
         """Compute next available order ID with fill-the-gap logic."""
         df = self._read_df(raw=True, ttl=0)
@@ -727,40 +759,6 @@ class PrinterServiceCRM:
                 break
 
         return missing if missing else existing_sorted[-1] + 1
-
-    def _read_df(self, raw: bool = True, ttl: int = 0) -> Optional[pd.DataFrame]:
-        """Read Google Sheets into DataFrame safely."""
-        try:
-            df = self.conn.read(
-                worksheet=self.worksheet,
-                ttl=ttl
-            )
-            if df is None:
-                return None
-            if raw:
-                return df
-            return df.fillna("")
-        except Exception as e:
-            st.sidebar.error(f"❌ Error reading Google Sheets: {e}")
-            return None
-
-
-    def _write_df(self, df: pd.DataFrame, allow_empty: bool = False) -> bool:
-        """Write entire DataFrame to Sheets. Prevents accidental data loss."""
-        try:
-            if df is None:
-                st.sidebar.error("❌ Tried to write None DataFrame to Sheets.")
-                return False
-            if df.empty and not allow_empty:
-                st.sidebar.error("⚠️ Refusing to write empty DataFrame to prevent data loss.")
-                return False
-            self.conn.update(worksheet=self.worksheet, data=df)
-            st.sidebar.success("💾 Saved to Google Sheets!")
-            return True
-        except Exception as e:
-            st.sidebar.error(f"❌ Error saving to Google Sheets: {e}")
-            return False
-
 
     def _init_sheet(self):
         """Ensure headers exist and compute next_order_id with fill-the-gap logic."""
@@ -805,8 +803,6 @@ class PrinterServiceCRM:
 
         # CASE 4 — Compute next order ID
         self.next_order_id = self._compute_next_order_id()
-
-
 
     def create_service_order(
         self,
@@ -901,6 +897,23 @@ class PrinterServiceCRM:
             df.loc[mask, "total_cost"] = labor + parts
 
         return self._write_df(df)
+
+    def delete_order(self, order_id: str) -> bool:
+        """Delete an order from the sheet."""
+        df = self._read_df(raw=True, ttl=0)
+        if df is None or df.empty or "order_id" not in df.columns:
+            st.sidebar.error("❌ Cannot delete: no data found in Google Sheets.")
+            return False
+
+        mask = df["order_id"] == order_id
+        if not mask.any():
+            st.sidebar.error(f"❌ Order {order_id} not found in sheet.")
+            return False
+
+        df_deleted = df[~mask]
+        # Allow writing even if the sheet becomes empty after deletion
+        return self._write_df(df_deleted, allow_empty=True)
+
 
 
 # ============================================================================
@@ -1133,7 +1146,7 @@ def main():
                     st.session_state["pdf_downloaded"] = True
                     st.rerun()
 
-    # TAB 1: ALL ORDERS
+        # TAB 1: ALL ORDERS
     elif active_tab == 1:
         st.header("All Service Orders")
         df = df_all_orders
@@ -1144,8 +1157,7 @@ def main():
             col3.metric("✅ Ready", len(df[df["status"] == "Ready for Pickup"]))
             col4.metric("🎉 Completed", len(df[df["status"] == "Completed"]))
 
-            st.markdown("**Click on a row to edit that order:**")
-
+            st.markdown("**Click on a row to edit or delete that order:**")
             event = st.dataframe(
                 df[["order_id", "client_name", "printer_brand", "date_received", "status", "total_cost"]],
                 use_container_width=True,
@@ -1154,14 +1166,26 @@ def main():
                 key="orders_table"
             )
 
+            selected_order_id = None
             if event and "selection" in event and event["selection"]["rows"]:
                 selected_idx = event["selection"]["rows"][0]
                 selected_order_id = df.iloc[selected_idx]["order_id"]
-
                 st.session_state["selected_order_for_update"] = selected_order_id
                 st.session_state["previous_selected_order"] = selected_order_id
-                st.session_state["active_tab"] = 2
-                st.rerun()
+
+            if selected_order_id:
+                st.markdown(f"**Selected order:** `{selected_order_id}`")
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    if st.button("✏️ Edit selected order", key="btn_edit_selected", use_container_width=True):
+                        st.session_state["active_tab"] = 2
+                        st.rerun()
+                with col_b:
+                    if st.button("🗑 Delete selected order", key="btn_delete_selected", type="secondary", use_container_width=True):
+                        if crm.delete_order(selected_order_id):
+                            st.success(f"🗑 Order {selected_order_id} deleted successfully!")
+                            st.session_state["selected_order_for_update"] = None
+                            st.rerun()
 
             csv = df.to_csv(index=False)
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1176,7 +1200,7 @@ def main():
         else:
             st.info("📝 No orders yet. Create your first order in the 'New Order' tab!")
 
-    # TAB 2: UPDATE ORDER
+# TAB 2: UPDATE ORDER
     elif active_tab == 2:
         st.header("Update Service Order")
 
