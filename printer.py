@@ -726,33 +726,6 @@ class PrinterServiceCRM:
             st.sidebar.error(f"❌ Error saving to Google Sheets: {e}")
             return False
 
-    def _compute_next_order_id(self) -> int:
-        """Compute next available order ID with fill-the-gap logic."""
-        df = self._read_df(raw=True, ttl=0)
-        if df is None or df.empty or "order_id" not in df.columns:
-            return 1
-
-        existing = []
-        for oid in df["order_id"]:
-            try:
-                if isinstance(oid, str) and oid.startswith("SRV-"):
-                    num = int(oid.split("-")[1])
-                    existing.append(num)
-            except Exception:
-                continue
-
-        if not existing:
-            return 1
-
-        existing_sorted = sorted(existing)
-        missing = None
-        for i in range(1, existing_sorted[-1] + 1):
-            if i not in existing_sorted:
-                missing = i
-                break
-
-        return missing if missing else existing_sorted[-1] + 1
-
     def _init_sheet(self):
         """Ensure headers exist and compute next_order_id with fill-the-gap logic."""
         df = self._read_df(raw=True, ttl=0)
@@ -794,8 +767,35 @@ class PrinterServiceCRM:
             df["printers_json"] = ""
             self._write_df(df, allow_empty=False)
 
-        # CASE 4 — Compute next order ID
-        self.next_order_id = self._compute_next_order_id()
+        # CASE 4 — Determine next order ID with fill-the-gap logic
+        existing = []
+        for oid in df["order_id"]:
+            try:
+                if isinstance(oid, str) and oid.startswith("SRV-"):
+                    num = int(oid.split("-")[1])
+                    existing.append(num)
+            except Exception:
+                continue
+
+        # CASE 4A — No existing IDs → start fresh
+        if not existing:
+            self.next_order_id = 1
+            return
+
+        existing_sorted = sorted(existing)
+
+        # CASE 4B — Find the first missing ID
+        missing = None
+        for i in range(1, existing_sorted[-1] + 1):
+            if i not in existing_sorted:
+                missing = i
+                break
+
+        if missing:
+            self.next_order_id = missing
+        else:
+            # No gaps → next is max + 1
+            self.next_order_id = existing_sorted[-1] + 1
 
     def create_service_order(
         self,
@@ -809,9 +809,7 @@ class PrinterServiceCRM:
         date_received,
         date_pickup
     ):
-        # Recalculate next_order_id from current sheet state
-        next_id = self._compute_next_order_id()
-        order_id = f"SRV-{next_id:05d}"
+        order_id = f"SRV-{self.next_order_id:05d}"
 
         # First printer for legacy columns
         first_brand = ""
@@ -861,6 +859,7 @@ class PrinterServiceCRM:
         updated_df = pd.concat([df, new_order], ignore_index=True) if df is not None and not df.empty else new_order
 
         if self._write_df(updated_df):
+            self.next_order_id += 1
             return order_id
         return None
 
@@ -890,21 +889,6 @@ class PrinterServiceCRM:
             df.loc[mask, "total_cost"] = labor + parts
 
         return self._write_df(df)
-
-    def delete_order(self, order_id: str) -> bool:
-        """Delete an order from the sheet."""
-        df = self._read_df(raw=True, ttl=0)
-        if df is None or df.empty or "order_id" not in df.columns:
-            st.sidebar.error("❌ Cannot delete: no data found in Google Sheets.")
-            return False
-
-        mask = df["order_id"] == order_id
-        if not mask.any():
-            st.sidebar.error(f"❌ Order {order_id} not found in sheet.")
-            return False
-
-        df_deleted = df[~mask]
-        return self._write_df(df_deleted, allow_empty=True)
 
 
 # ============================================================================
