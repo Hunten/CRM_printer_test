@@ -761,7 +761,6 @@ class PrinterServiceCRM:
         return missing if missing else existing_sorted[-1] + 1
 
         def _init_sheet(self):
-        """Ensure headers exist and compute next_order_id with fill-the-gap logic."""
         df = self._read_df(raw=True, ttl=0)
 
         # CASE 1 — Sheet is missing or fully empty → create new sheet
