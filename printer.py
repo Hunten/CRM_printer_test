@@ -734,12 +734,11 @@ class PrinterServiceCRM:
             return False
 
     def _compute_next_order_id(self) -> int:
-        """Compute next available order ID - sequential only with debugging."""
+        """Compute next available order ID with fill-the-gap logic."""
         df = self._read_df(raw=True, ttl=0)
         if df is None or df.empty or "order_id" not in df.columns:
-            st.sidebar.warning("No existing orders found. Starting with ID 1.")
             return 1
-    
+
         existing = []
         for oid in df["order_id"]:
             try:
@@ -748,19 +747,18 @@ class PrinterServiceCRM:
                     existing.append(num)
             except Exception:
                 continue
-    
-        if not existing:
-            st.sidebar.warning("No valid SRV orders found. Starting with ID 1.")
-            return 1
-    
-        existing_sorted = sorted(existing)
-        next_id = existing_sorted[-1] + 1
-        
-        # Debug info
-        st.sidebar.info(f"📊 Found {len(existing)} orders | Max ID: {existing_sorted[-1]} | Next: {next_id}")
-        
-        return next_id
 
+        if not existing:
+            return 1
+
+        existing_sorted = sorted(existing)
+        missing = None
+        for i in range(1, existing_sorted[-1] + 1):
+            if i not in existing_sorted:
+                missing = i
+                break
+
+        return missing if missing else existing_sorted[-1] + 1
 
     def _init_sheet(self):
         """Ensure headers exist and compute next_order_id with fill-the-gap logic."""
